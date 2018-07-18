@@ -11,7 +11,9 @@ from PIL import Image
 class SketchView:
 
     def __init__(self, window):
-
+        """
+        Initialization of GUI widgets
+        """
         self.CONST_ZOOM = 100
         self.STARTED = False
         self.window = window
@@ -21,7 +23,6 @@ class SketchView:
         self.TIMER_ON = True
         self.timeEvent = None
         
-
         # menu
         self.menu = Menu(self.window)
         self.menu_file = Menu(self.menu)
@@ -78,20 +79,14 @@ class SketchView:
     # events
     def clicked(self):
         print(self.STARTED)
-
-    
-    def updateTime(self):
-        """
-        Time manager
-        """
-        #print("time updated")
-        self.timeEvent = self.window.after(self.timer_limit*1000, self.updateTime)
-        self.nextImage()
         
     
     def changeVisbility(self):
         """
-        Updates visibility of canvas and init message upon STARTED change.
+        Updates visibility of canvas and init message upon STARTED change. 
+
+        If STARTED, then the canvas is shown. 
+        If not STARTED, then the welcome message is shown. 
         """
         if self.STARTED:
             self.canvas.pack(fill=BOTH, expand=True)
@@ -103,8 +98,10 @@ class SketchView:
     
     def openFolder(self):
         """
-        Starts the round when you select a folder. Acts as initialization.
-        For now displays a random file in the directotry.
+        Initializes and shuffles the chosen folder's images. Also starts the timer.
+        
+        Currently only supports .ppm files. 
+        TODO: add general file support
         """
         self.window.folder_path = tkFileDialog.askdirectory(initialdir=os.getcwd(), title='Select folder')  
         self.STARTED = True
@@ -117,49 +114,78 @@ class SketchView:
     
     def selectImage(self):
         """
-        Keeps track of the current image being displayed.
-        TODO: allow change based on time.
+        Initializes currently displayed image. Also updates filename label.
         """
         self.img_current = self.img_files[self.img_ptr]
         self.img = PhotoImage(file=self.img_current)
-        self.lbl_filename.configure(text=self.img_current) # change filename
+        self.lbl_filename.configure(text=self.img_current)
 
     
-    def updateImage(self):
+    def displayImage(self):
         """
-        Clears the canvas and displays the image.
+        Clears the canvas and displays the new image.
         """
         self.canvas.delete('all')
         self.window.update()
         self.canvas.create_image(self.canvas.winfo_width()/2, self.canvas.winfo_height()/2, image=self.img)
 
 
-    def nextImage(self):
+    def updateImage(self):
         """
         Changes to next image in img_files.
+        Only effective if STARTED is True.
         """
-        #print("nextImage called")
+        #print("updateImage called")
         if self.STARTED:
-            if self.img_ptr==len(self.img_files)-1:
-                #print("reset triggered by nextImage")
+            if self.img_ptr==len(self.img_files)-1: # reached end of files
+                #print("reset triggered by updateImage")
                 self.reset()
-            elif self.STARTED and self.img_ptr<len(self.img_files)-1:
+            elif self.img_ptr<len(self.img_files)-1:
                 #print("next image")
                 self.img_ptr += 1
                 self.selectImage()
-                self.updateImage()
+                self.displayImage()
+
+
+    def nextImage(self):
+        """
+        Changes to next image in img_files. Used with the button.
+        Only effective if STARTED is True.
+        """
+        #print("nextImage called")
+        if self.STARTED:
+            if self.img_ptr==len(self.img_files)-1: # reached end
+                #print("reset triggered by nextImage")
+                self.reset()
+            elif self.img_ptr<len(self.img_files)-1:
+                #print("next image")
                 #self.restartTime()
+                self.cancelTime()
+                self.updateTime()
+
 
 
     def prevImage(self):
         """
         Changes to prev image in img_files.
+        Only effective if STARTED is True.
         """
         if self.STARTED and self.img_ptr>0:
-            self.img_ptr -= 1
-            self.selectImage()
-            self.updateImage()
+            self.img_ptr -= 2 # jesus pleasus this is a bad fix
+            #self.selectImage()
+            #self.displayImage()
+            self.cancelTime()
+            self.updateTime()
             
+
+    def updateTime(self):
+        """
+        Updates to the next image after a set amount of time.
+        """
+        #print("time updated")
+        self.timeEvent = self.window.after(self.timer_limit*1000, self.updateTime)
+        self.updateImage()
+
 
     def cancelTime(self):
         """
@@ -173,7 +199,7 @@ class SketchView:
 
     def reset(self):
         """
-        Sets state back to unstarted. 
+        Sets state back to STARTED==False, i.e. the initial screen. 
         """
         #print("reset triggered")
         self.STARTED = False
