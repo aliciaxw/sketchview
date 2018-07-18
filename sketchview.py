@@ -1,10 +1,12 @@
 import glob
 import os
 import random
+import time
 import tkFileDialog
 from Tkinter import *
 from PIL import Image
 
+# FIX PREV/NEXT TIMING
 
 class SketchView:
 
@@ -13,6 +15,12 @@ class SketchView:
         self.CONST_ZOOM = 100
         self.STARTED = False
         self.window = window
+
+        # timer
+        self.timer_limit = 1 #in seconds
+        self.TIMER_ON = True
+        self.timeEvent = None
+        
 
         # menu
         self.menu = Menu(self.window)
@@ -65,91 +73,124 @@ class SketchView:
         self.img = None
 
 
+
+
     # events
     def clicked(self):
         print(self.STARTED)
 
-    """
-    Updates visibility of canvas and init message upon STARTED change.
-    """
+    
+    def updateTime(self):
+        """
+        Time manager
+        """
+        #print("time updated")
+        self.timeEvent = self.window.after(self.timer_limit*1000, self.updateTime)
+        self.nextImage()
+        
+    
     def changeVisbility(self):
+        """
+        Updates visibility of canvas and init message upon STARTED change.
+        """
         if self.STARTED:
             self.canvas.pack(fill=BOTH, expand=True)
             self.lbl_start.pack_forget()
         else:
             self.lbl_start.pack(fill=BOTH, expand=True)
-            self.canvas.pack_forget()
+            self.canvas.pack_forget()        
 
-    """
-    Starts the round when you select a folder. Acts as initialization.
-    For now displays a random file in the directotry.
-    """
+    
     def openFolder(self):
+        """
+        Starts the round when you select a folder. Acts as initialization.
+        For now displays a random file in the directotry.
+        """
         self.window.folder_path = tkFileDialog.askdirectory(initialdir=os.getcwd(), title='Select folder')  
         self.STARTED = True
         self.img_files = glob.glob(str(self.window.folder_path+'\*.ppm')) # returns list
         random.shuffle(self.img_files) # randomizes list order
-        self.img_ptr = 0 # start at first element of list
-        self.selectImage()
-        self.updateImage()
+        self.img_ptr = -1 # start at first element of list
         self.changeVisbility()
-        #self.clicked()
-        
-    """
-    Keeps track of the current image being displayed.
-    TODO: allow change based on time.
-    """
+        self.updateTime()
+
+    
     def selectImage(self):
+        """
+        Keeps track of the current image being displayed.
+        TODO: allow change based on time.
+        """
         self.img_current = self.img_files[self.img_ptr]
         self.img = PhotoImage(file=self.img_current)
         self.lbl_filename.configure(text=self.img_current) # change filename
 
-    """
-    Clears the canvas and displays the image.
-    """
+    
     def updateImage(self):
+        """
+        Clears the canvas and displays the image.
+        """
         self.canvas.delete('all')
         self.window.update()
         self.canvas.create_image(self.canvas.winfo_width()/2, self.canvas.winfo_height()/2, image=self.img)
 
-    """
-    Changes to next image in img_files.
-    """
-    def nextImage(self):
-        if self.STARTED and self.img_ptr<len(self.img_files)-1:
-            self.img_ptr += 1
-            self.selectImage()
-            self.updateImage()
-            self.clicked()
 
-    """
-    Changes to prev image in img_files.
-    """
+    def nextImage(self):
+        """
+        Changes to next image in img_files.
+        """
+        #print("nextImage called")
+        if self.STARTED:
+            if self.img_ptr==len(self.img_files)-1:
+                #print("reset triggered by nextImage")
+                self.reset()
+            elif self.STARTED and self.img_ptr<len(self.img_files)-1:
+                #print("next image")
+                self.img_ptr += 1
+                self.selectImage()
+                self.updateImage()
+                #self.restartTime()
+
+
     def prevImage(self):
+        """
+        Changes to prev image in img_files.
+        """
         if self.STARTED and self.img_ptr>0:
             self.img_ptr -= 1
             self.selectImage()
             self.updateImage()
-            self.clicked()
+            
 
-    """
-    Sets state back to unstarted. 
-    """
+    def cancelTime(self):
+        """
+        Cancels the timer.
+        """
+        if self.timeEvent is not None:
+            #print("timer canceled")
+            self.window.after_cancel(self.timeEvent)
+            self.timeEvent = None
+    
+
     def reset(self):
+        """
+        Sets state back to unstarted. 
+        """
+        #print("reset triggered")
+        self.STARTED = False
+        self.cancelTime()
         self.window.folder_path = None
         self.img_files = None
         self.img_ptr = None
         self.img_current = None
         self.img = None
         self.lbl_filename.configure(text='')
-        self.STARTED = False
         self.changeVisbility()
-        self.clicked()
+        
 
-    """
-    Recenters image when window is resized.
-    """
     def repositionImage(self, event):
+        """
+        Recenters image when window is resized.
+        """
         # print('reposition called')
         new_x = event.width/2
         new_y = event.height/2
