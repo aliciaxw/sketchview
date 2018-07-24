@@ -6,8 +6,6 @@ import tkFileDialog
 from Tkinter import *
 from PIL import Image
 
-# FIX PREV/NEXT TIMING
-
 class SketchView:
 
     def __init__(self, window):
@@ -19,7 +17,7 @@ class SketchView:
         self.window = window
 
         # timer
-        self.timer_limit = 1 #in seconds
+        self.timer_limit = 30 #in seconds
         self.TIMER_ON = True
         self.timeEvent = None
         
@@ -53,7 +51,20 @@ class SketchView:
         self.btn_reset = Button(self.btn_frame, text='Reset', command=self.reset)
         self.btn_nxt = Button(self.btn_frame, text='Next', command=self.nextImage)
         self.btn_zoom = Button(self.btn_frame, text='%d' % (self.CONST_ZOOM)+'% Zoom', command=self.clicked)
-        self.btn_length = Button(self.btn_frame, text='30 seconds', command=self.clicked)
+        self.TIMER_OPTIONS = [
+            '15 sec',
+            '30 sec', 
+            '60 sec', 
+            '90 sec', 
+            '120 sec', 
+            '300 sec', 
+            '600 sec', 
+            '1800 sec'
+        ]
+        self.lbl_timer = StringVar(self.btn_frame)
+        self.lbl_timer.set(self.TIMER_OPTIONS[1]) # default val
+        self.lbl_timer.trace('w', self.updateTimer)
+        self.btn_timer = OptionMenu(self.btn_frame, self.lbl_timer, *self.TIMER_OPTIONS)
         self.lbl_filename = Label(self.btn_frame, text='')
         
         self.btn_frame.pack(anchor='nw', fill=X)
@@ -61,7 +72,7 @@ class SketchView:
         self.btn_reset.pack(side=LEFT)
         self.btn_nxt.pack(side=LEFT)
         self.btn_zoom.pack(side=LEFT)
-        self.btn_length.pack(side=LEFT)
+        self.btn_timer.pack(side=LEFT)
         self.lbl_filename.pack(side=RIGHT)
         
         # start message
@@ -224,3 +235,10 @@ class SketchView:
         # print(new_y)
         self.canvas.delete('all')
         self.canvas.create_image(new_x, new_y, image=self.img)
+
+    def updateTimer(self, *args):
+        """
+        Updates the timer limit when option is changed in the timer drop down menu.
+        """
+        self.timer_limit = int(self.lbl_timer.get().split(' ')[0])
+        #print('timer changed to %d' % self.timer_limit)
