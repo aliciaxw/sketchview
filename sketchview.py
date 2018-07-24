@@ -5,9 +5,9 @@ import time
 import tkFileDialog
 from Tkinter import *
 from PIL import Image
-
+ 
 class SketchView:
-
+ 
     def __init__(self, window):
         """
         Initialization of GUI widgets
@@ -15,19 +15,21 @@ class SketchView:
         self.CONST_ZOOM = 100
         self.STARTED = False
         self.window = window
-
+ 
         # timer
         self.timer_limit = 30 #in seconds
         self.TIMER_ON = True
         self.timeEvent = None
-        
+        self.countEvent = None
+        self.time_left = 0
+         
         # menu
         self.menu = Menu(self.window)
         self.menu_file = Menu(self.menu)
         self.menu_view = Menu(self.menu)
         self.menu_settings = Menu(self.menu)
         self.menu_about = Menu(self.menu)
-
+ 
         self.menu_file.add_command(label='Paths...', command=self.openFolder)
         self.menu_view.add_command(label='Show Timer')
         self.menu_view.add_separator()
@@ -38,13 +40,13 @@ class SketchView:
         self.menu_settings.add_command(label='Background Color...')
         self.menu_settings.add_command(label='Shortcuts...')
         self.menu_about.add_command(label='by Alicia Wang')
-
+ 
         self.menu.add_cascade(label='File', menu=self.menu_file)
         self.menu.add_cascade(label='View', menu=self.menu_view)
         self.menu.add_cascade(label='Settings', menu=self.menu_settings)
         self.menu.add_cascade(label='About', menu=self.menu_about)
         self.window.config(menu=self.menu)
-
+ 
         # buttons
         self.btn_frame = Frame(self.window)
         self.btn_prev = Button(self.btn_frame, text='Prev', command=self.prevImage)
@@ -52,6 +54,7 @@ class SketchView:
         self.btn_nxt = Button(self.btn_frame, text='Next', command=self.nextImage)
         self.btn_zoom = Button(self.btn_frame, text='%d' % (self.CONST_ZOOM)+'% Zoom', command=self.clicked)
         self.TIMER_OPTIONS = [
+            '3 sec',
             '15 sec',
             '30 sec', 
             '60 sec', 
@@ -62,40 +65,42 @@ class SketchView:
             '1800 sec'
         ]
         self.lbl_timer = StringVar(self.btn_frame)
-        self.lbl_timer.set(self.TIMER_OPTIONS[1]) # default val
+        self.lbl_timer.set(self.TIMER_OPTIONS[2]) # default val
         self.lbl_timer.trace('w', self.updateTimer)
         self.btn_timer = OptionMenu(self.btn_frame, self.lbl_timer, *self.TIMER_OPTIONS)
+        self.lbl_count = Label(self.btn_frame, text='timer')
         self.lbl_filename = Label(self.btn_frame, text='')
-        
+         
         self.btn_frame.pack(anchor='nw', fill=X)
         self.btn_prev.pack(side=LEFT)
         self.btn_reset.pack(side=LEFT)
         self.btn_nxt.pack(side=LEFT)
         self.btn_zoom.pack(side=LEFT)
         self.btn_timer.pack(side=LEFT)
+        self.lbl_count.pack(side=LEFT)
         self.lbl_filename.pack(side=RIGHT)
-        
+         
         # start message
         self.lbl_start = Label(self.window, text='Select a folder to get started')
         self.lbl_start.pack(fill=BOTH, expand=True)
-
+ 
         # canvas
         self.canvas = Canvas(self.window, width=800, height=600)
         self.canvas.bind('<Configure>', self.repositionImage)
         self.img = None
-
-
-
-
+ 
+ 
+ 
+ 
     # events
     def clicked(self):
-        print(self.STARTED)
-        
-    
+        print('STARTED is %r' % self.STARTED)
+         
+     
     def changeVisbility(self):
         """
         Updates visibility of canvas and init message upon STARTED change. 
-
+ 
         If STARTED, then the canvas is shown. 
         If not STARTED, then the welcome message is shown. 
         """
@@ -105,12 +110,12 @@ class SketchView:
         else:
             self.lbl_start.pack(fill=BOTH, expand=True)
             self.canvas.pack_forget()        
-
-    
+ 
+     
     def openFolder(self):
         """
         Initializes and shuffles the chosen folder's images. Also starts the timer.
-        
+         
         Currently only supports .ppm files. 
         TODO: add general file support
         """
@@ -121,8 +126,8 @@ class SketchView:
         self.img_ptr = -1 # start at first element of list
         self.changeVisbility()
         self.updateTime()
-
-    
+ 
+     
     def selectImage(self):
         """
         Initializes currently displayed image. Also updates filename label.
@@ -130,8 +135,8 @@ class SketchView:
         self.img_current = self.img_files[self.img_ptr]
         self.img = PhotoImage(file=self.img_current)
         self.lbl_filename.configure(text=self.img_current)
-
-    
+ 
+     
     def displayImage(self):
         """
         Clears the canvas and displays the new image.
@@ -139,11 +144,11 @@ class SketchView:
         self.canvas.delete('all')
         self.window.update()
         self.canvas.create_image(self.canvas.winfo_width()/2, self.canvas.winfo_height()/2, image=self.img)
-
-
+ 
+ 
     def updateImage(self):
         """
-        Changes to next image in img_files.
+        Changes to next image in img_files and manages the countdown timer.
         Only effective if STARTED is True.
         """
         #print("updateImage called")
@@ -156,8 +161,10 @@ class SketchView:
                 self.img_ptr += 1
                 self.selectImage()
                 self.displayImage()
-
-
+                self.cancelCount()
+                self.countdown(self.timer_limit)
+                
+ 
     def nextImage(self):
         """
         Changes to next image in img_files. Used with the button.
@@ -173,9 +180,9 @@ class SketchView:
                 #self.restartTime()
                 self.cancelTime()
                 self.updateTime()
-
-
-
+ 
+ 
+ 
     def prevImage(self):
         """
         Changes to prev image in img_files.
@@ -187,16 +194,33 @@ class SketchView:
             #self.displayImage()
             self.cancelTime()
             self.updateTime()
-            
-
+             
+ 
     def updateTime(self):
         """
-        Updates to the next image after a set amount of time.
+        Updates to the next image after timer_limit number of seconds.
         """
         #print("time updated")
         self.timeEvent = self.window.after(self.timer_limit*1000, self.updateTime)
         self.updateImage()
-
+        
+ 
+    def countdown(self, time_left=None):
+        """
+        Controls the countdown timer.
+        """
+        #print('countdown triggered')
+        if time_left is not None:
+            self.time_left = time_left
+        if self.time_left <= 0:
+            #print('countdown done')
+            self.lbl_count.configure(text='time\'s up')
+        else:
+            #print('countdown going down')
+            self.lbl_count.configure(text='%d' % self.time_left)
+            self.time_left = self.time_left-1
+            self.countEvent = self.window.after(1000, self.countdown)
+ 
 
     def cancelTime(self):
         """
@@ -206,7 +230,17 @@ class SketchView:
             #print("timer canceled")
             self.window.after_cancel(self.timeEvent)
             self.timeEvent = None
-    
+     
+
+    def cancelCount(self):
+        """
+        Cancels the countdown.
+        """
+        if self.countEvent is not None:
+            #print("timer canceled")
+            self.window.after_cancel(self.countEvent)
+            self.countEvent = None
+ 
 
     def reset(self):
         """
@@ -222,8 +256,8 @@ class SketchView:
         self.img = None
         self.lbl_filename.configure(text='')
         self.changeVisbility()
-        
-
+         
+ 
     def repositionImage(self, event):
         """
         Recenters image when window is resized.
@@ -235,6 +269,7 @@ class SketchView:
         # print(new_y)
         self.canvas.delete('all')
         self.canvas.create_image(new_x, new_y, image=self.img)
+ 
 
     def updateTimer(self, *args):
         """
