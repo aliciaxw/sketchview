@@ -6,10 +6,9 @@ It is designed for artists who do timed gesture drawing and figure sketching.
 ## Current features
 * Playback options (next, previous, reset)
 * Countdown timer
-* Supports .ppm files
+* Supports .bmp, .gif, .jpg, .png, .ppm, .tif image files
 
 ## Planned features
-* General image file support
 * Large timer
 * Multiple paths
 * Zoom
