@@ -4,7 +4,7 @@ import random
 import time
 import tkFileDialog
 from Tkinter import *
-from PIL import Image
+from PIL import Image, ImageTk
  
 class SketchView:
  
@@ -15,6 +15,7 @@ class SketchView:
         self.CONST_ZOOM = 100
         self.STARTED = False
         self.window = window
+        self.filetypes = ('\*.bmp', '\*.gif', '\*.jpg', '\*.jpeg', '\*.png', '\*.ppm', '\*.tif') # accepted image files
  
         # timer
         self.timer_limit = 30 #in seconds
@@ -54,7 +55,7 @@ class SketchView:
         self.btn_nxt = Button(self.btn_frame, text='Next', command=self.nextImage)
         self.btn_zoom = Button(self.btn_frame, text='%d' % (self.CONST_ZOOM)+'% Zoom', command=self.clicked)
         self.TIMER_OPTIONS = [
-            '3 sec',
+            '3 sec', # DEBUG
             '15 sec',
             '30 sec', 
             '60 sec', 
@@ -121,19 +122,22 @@ class SketchView:
         """
         self.window.folder_path = tkFileDialog.askdirectory(initialdir=os.getcwd(), title='Select folder')  
         self.STARTED = True
-        self.img_files = glob.glob(str(self.window.folder_path+'\*.ppm')) # returns list
+        self.img_files = [] # list of filepaths
+        for files in self.filetypes:
+            self.img_files.extend(glob.glob(str(self.window.folder_path+files))) 
         random.shuffle(self.img_files) # randomizes list order
         self.img_ptr = -1 # start at first element of list
         self.changeVisbility()
         self.updateTime()
- 
+
      
     def selectImage(self):
         """
         Initializes currently displayed image. Also updates filename label.
         """
-        self.img_current = self.img_files[self.img_ptr]
-        self.img = PhotoImage(file=self.img_current)
+        self.img_current = self.img_files[self.img_ptr] # img_current is a path
+        self.img_tmp = Image.open(self.img_current)
+        self.img = ImageTk.PhotoImage(self.img_tmp)
         self.lbl_filename.configure(text=self.img_current)
  
      
