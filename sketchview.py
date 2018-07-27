@@ -6,23 +6,27 @@ import tkFileDialog
 from Tkinter import *
 from PIL import Image, ImageTk
  
+# TODO
+# fix issue with timer continuing after pressing next on the last image
+# add keyboard shortcut support
+
 class SketchView:
  
     def __init__(self, window):
         """
         Initialization of GUI widgets
         """
-        self.CONST_ZOOM = 100
-        self.STARTED = False
-        self.window = window
         self.filetypes = ('\*.bmp', '\*.gif', '\*.jpg', '\*.jpeg', '\*.png', '\*.ppm', '\*.tif') # accepted image files
+        self.STARTED = False        # folder picked
+        self.window = window
+        self.zoom = 100             # zoom constant
  
         # timer
-        self.timer_limit = 30 #in seconds
-        self.TIMER_ON = True
-        self.timeEvent = None
-        self.countEvent = None
-        self.time_left = 0
+        self.timer_limit = 30       #in seconds
+        # self.TIMER_ON = True      DEBUG
+        self.timeEvent = None       # keeps track of image timer callback
+        self.countEvent = None      # keeps track of countdown callback
+        self.time_left = 0          # stores countdown value
          
         # menu
         self.menu = Menu(self.window)
@@ -53,7 +57,7 @@ class SketchView:
         self.btn_prev = Button(self.btn_frame, text='Prev', command=self.prevImage)
         self.btn_reset = Button(self.btn_frame, text='Reset', command=self.reset)
         self.btn_nxt = Button(self.btn_frame, text='Next', command=self.nextImage)
-        self.btn_zoom = Button(self.btn_frame, text='%d' % (self.CONST_ZOOM)+'% Zoom', command=self.clicked)
+        self.btn_zoom = Button(self.btn_frame, text='%d' % (self.zoom)+'% Zoom', command=self.clicked)
         self.TIMER_OPTIONS = [
             '3 sec', # DEBUG
             '15 sec',
@@ -137,6 +141,7 @@ class SketchView:
         """
         self.img_current = self.img_files[self.img_ptr] # img_current is a path
         self.img_tmp = Image.open(self.img_current)
+        self.resizeImageToWindow()
         self.img = ImageTk.PhotoImage(self.img_tmp)
         self.lbl_filename.configure(text=self.img_current)
  
@@ -216,15 +221,14 @@ class SketchView:
         #print('countdown triggered')
         if time_left is not None:
             self.time_left = time_left
-        if self.time_left <= 0:
-            #print('countdown done')
-            self.lbl_count.configure(text='time\'s up')
-        else:
+        if self.time_left > 0:
             #print('countdown going down')
             self.lbl_count.configure(text='%d' % self.time_left)
             self.time_left = self.time_left-1
             self.countEvent = self.window.after(1000, self.countdown)
- 
+        else:
+            self.lbl_count.configure(text='time\'s up') # debug?
+
 
     def cancelTime(self):
         """
@@ -242,6 +246,7 @@ class SketchView:
         """
         if self.countEvent is not None:
             #print("timer canceled")
+            self.time_left = 0
             self.window.after_cancel(self.countEvent)
             self.countEvent = None
  
@@ -253,6 +258,8 @@ class SketchView:
         #print("reset triggered")
         self.STARTED = False
         self.cancelTime()
+        self.cancelCount()
+        self.lbl_count.configure(text='time\'s up')
         self.window.folder_path = None
         self.img_files = None
         self.img_ptr = None
@@ -266,14 +273,35 @@ class SketchView:
         """
         Recenters image when window is resized.
         """
-        # print('reposition called')
         new_x = event.width/2
         new_y = event.height/2
-        # print(new_x)
-        # print(new_y)
         self.canvas.delete('all')
         self.canvas.create_image(new_x, new_y, image=self.img)
- 
+
+
+    def resizeImageToWindow(self):
+        """
+        Fits the current image to window bounds with original image ratio intact.
+        """
+        cur_width, cur_height = self.img_tmp.size 
+        self.window.update()
+        win_width = self.window.winfo_width()
+        win_height = self.window.winfo_height() - self.btn_frame.winfo_height()
+        new_width = None
+        new_height = None
+        # resizing to window as needed
+        if cur_width > win_width:
+            new_width = win_width 
+            new_height = cur_height * new_width / cur_width
+            # update current dimensions
+            cur_width = new_width
+            cur_height = new_height
+        if cur_height > win_height:
+            new_height = win_height
+            new_width = cur_width * new_height / cur_height
+        if new_width is not None and new_height is not None:
+            self.img_tmp = self.img_tmp.resize((new_width, new_height), Image.ANTIALIAS)
+
 
     def updateTimer(self, *args):
         """
