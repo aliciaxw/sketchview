@@ -6,7 +6,7 @@ import tkFileDialog
 from Tkinter import *
 from PIL import Image, ImageTk
 
-# TODO: add keyboard shortcut support
+# TODO: add customizable keyboard support
 # TODO: add pause timer
 
 class SketchView:
@@ -93,6 +93,14 @@ class SketchView:
         self.canvas.bind('<Configure>', self.repositionImage)
         self.img = None
 
+        # keyboard events
+        self.window.bind('<Right>', self.nextImage)
+        self.window.bind('d', self.nextImage)
+        self.window.bind('<Left>', self.prevImage)
+        self.window.bind('a', self.prevImage)
+        self.window.bind('<Escape>', self.reset)
+        self.window.bind('r', self.reset)
+
 
 
 
@@ -168,7 +176,7 @@ class SketchView:
                 self.countdown(self.timer_limit)
 
 
-    def nextImage(self):
+    def nextImage(self, event=None):
         """
         Changes to next image in img_files. Used with the button.
         Only effective if STARTED is True.
@@ -181,7 +189,7 @@ class SketchView:
                 self.updateTimer()
 
 
-    def prevImage(self):
+    def prevImage(self, event=None):
         """
         Changes to prev image in img_files.
         Only effective if STARTED is True.
@@ -240,7 +248,7 @@ class SketchView:
         self.timer_limit = int(self.lbl_timer.get().split(' ')[0])
 
 
-    def reset(self):
+    def reset(self, event=None):
         """
         Sets state back to STARTED==False, i.e. the initial screen. 
         """
