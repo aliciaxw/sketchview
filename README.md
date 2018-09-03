@@ -2,6 +2,8 @@
 
 **sketchview** is a simple reference assistant program for artists who do timed gesture drawing and figure sketching. Designed for Python 2.7.
 
+![alttext](https://i.imgur.com/kuV2m2d.png)
+
 ## Current features
 * Playback options (next, previous, reset)
 * Countdown timer
